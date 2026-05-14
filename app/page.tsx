@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Phone, PhoneOff, Languages, Globe } from "lucide-react";
-import { Conversation } from "@elevenlabs/client";
+import {
+  Conversation,
+  type Conversation as ElevenLabsConversation,
+  type Language as ElevenLabsLanguage,
+  type Mode,
+} from "@elevenlabs/client";
+import type { MessagePayload } from "@elevenlabs/types";
 
 // Language configurations - agentId not needed anymore
 const languages = [
@@ -16,7 +22,13 @@ const languages = [
   { code: "ko", name: "Korean", flag: "🇰🇷" },
   { code: "zh", name: "Chinese", flag: "🇨🇳" },
   { code: "ar", name: "Arabic", flag: "🇦🇪" },
-];
+] as const satisfies ReadonlyArray<{
+  code: ElevenLabsLanguage;
+  name: string;
+  flag: string;
+}>;
+
+type LanguageOption = (typeof languages)[number];
 
 export default function Home() {
   const [volume, setVolume] = useState(0.3);
@@ -24,11 +36,11 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState("Disconnected");
-  const [selectedLanguage, setSelectedLanguage] = useState(languages[0]);
+  const [selectedLanguage, setSelectedLanguage] = useState<LanguageOption>(languages[0]);
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
-  const [conversationHistory, setConversationHistory] = useState<Array<{ role: string, content: string, language?: string }>>([]);
+  const [, setConversationHistory] = useState<Array<{ role: string, content: string, language?: string }>>([]);
 
-  const conversationRef = useRef<any>(null);
+  const conversationRef = useRef<ElevenLabsConversation | null>(null);
 
   // Orb animation based on volume
   useEffect(() => {
@@ -57,85 +69,85 @@ export default function Home() {
     });
   }, []);
 
-  // Get language-specific greeting
-  const getGreeting = (langCode: string) => {
-    const greetings: { [key: string]: string } = {
-      en: "Hello! How can I help you today?",
-      hi: "नमस्ते! आज मैं आपकी कैसे मदद कर सकता हूँ?",
-      es: "¡Hola! ¿Cómo puedo ayudarte hoy?",
-      fr: "Bonjour! Comment puis-je vous aider aujourd'hui?",
-      de: "Hallo! Wie kann ich Ihnen heute helfen?",
-      it: "Ciao! Come posso aiutarti oggi?",
-      ja: "こんにちは！今日はどのようにお手伝いできますか？",
-      ko: "안녕하세요! 오늘 어떻게 도와드릴까요?",
-      zh: "你好！今天我能帮您什么？",
-      ar: "مرحباً! كيف يمكنني مساعدتك اليوم؟"
-    };
-    return greetings[langCode] || greetings.en;
+  const getLanguageInstruction = (language: LanguageOption) => {
+    return [
+      `The user selected ${language.name} (${language.code}) from the country/language menu.`,
+      `Reply in ${language.name} only unless the user explicitly asks to switch languages.`,
+      `Keep your pronunciation, greetings, and follow-up questions natural for ${language.name}.`,
+      `If the user mixes languages, understand them but continue your response in ${language.name}.`,
+      `If you need to greet first, start in ${language.name}.`,
+    ].join(" ");
   };
 
-  const startConversation = async (signedUrl: string) => {
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+    return fallback;
+  };
+
+  const startConversation = async (signedUrl: string, language: LanguageOption) => {
     try {
       setStatus("Connecting...");
 
       const conversation = await Conversation.startSession({
         signedUrl: signedUrl,
+        dynamicVariables: {
+          selected_language_code: language.code,
+          selected_language_name: language.name,
+        },
         onConnect: () => {
           console.log("Connected to conversation");
           setConnected(true);
-          setStatus(`${selectedLanguage.name}: Listening... Say something!`);
+          setStatus(`${language.name}: Listening... Say something!`);
           setError(null);
-
-          // Add greeting to conversation history
-          const greeting = getGreeting(selectedLanguage.code);
-          setConversationHistory(prev => [...prev, {
-            role: "ai",
-            content: greeting,
-            language: selectedLanguage.name
-          }]);
         },
-        onDisconnect: () => {
-          console.log("Disconnected from conversation");
+        onDisconnect: (details) => {
+          console.log("Disconnected from conversation", details);
           setConnected(false);
           setStatus("Disconnected");
           conversationRef.current = null;
+          if (details.reason === "error") {
+            setError(details.message || "Conversation disconnected");
+          }
         },
-        onError: (error: any) => {
-          console.error("Conversation error:", error);
-          setError(error.message || "Conversation error occurred");
+        onError: (message: string, context?: unknown) => {
+          console.error("Conversation error:", message, context);
+          setError(message || "Conversation error occurred");
           setStatus("Error");
           setConnected(false);
         },
-        onModeChange: (mode: any) => {
+        onModeChange: ({ mode }: { mode: Mode }) => {
           console.log("Mode changed:", mode);
-          if (mode.mode === "speaking") {
-            setStatus(`${selectedLanguage.name}: AI is speaking...`);
-          } else if (mode.mode === "listening") {
-            setStatus(`${selectedLanguage.name}: Listening... You can speak now`);
+          if (mode === "speaking") {
+            setStatus(`${language.name}: AI is speaking...`);
+          } else if (mode === "listening") {
+            setStatus(`${language.name}: Listening... You can speak now`);
           }
         },
-        onMessage: (message: any) => {
+        onMessage: (message: MessagePayload) => {
           console.log("Message received:", message);
-          if (message.type === "user") {
+          if (message.role === "user" && message.message) {
             setConversationHistory(prev => [...prev, {
               role: "user",
-              content: message.text,
-              language: selectedLanguage.name
+              content: message.message,
+              language: language.name
             }]);
-          } else if (message.type === "ai") {
+          } else if (message.role === "agent" && message.message) {
             setConversationHistory(prev => [...prev, {
               role: "ai",
-              content: message.text,
-              language: selectedLanguage.name
+              content: message.message,
+              language: language.name
             }]);
           }
         }
       });
 
       conversationRef.current = conversation;
-    } catch (err: any) {
+      conversation.sendContextualUpdate(getLanguageInstruction(language));
+    } catch (err: unknown) {
       console.error("Failed to start conversation:", err);
-      throw new Error(err.message || "Failed to start conversation");
+      throw new Error(getErrorMessage(err, "Failed to start conversation"));
     }
   };
 
@@ -193,11 +205,11 @@ export default function Home() {
       }
 
       setStatus(`Starting ${selectedLanguage.name} conversation...`);
-      await startConversation(data.signedUrl);
+      await startConversation(data.signedUrl, selectedLanguage);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error:", err);
-      setError(err.message || "Something went wrong");
+      setError(getErrorMessage(err, "Something went wrong"));
       setStatus("Error");
       setConnected(false);
     } finally {
@@ -205,7 +217,7 @@ export default function Home() {
     }
   };
 
-  const changeLanguage = (language: typeof languages[0]) => {
+  const changeLanguage = (language: LanguageOption) => {
     if (connected) {
       setError("Please end current conversation before changing language");
       return;
@@ -321,8 +333,8 @@ export default function Home() {
             onClick={handleCallToggle}
             disabled={isLoading}
             className={`absolute -bottom-12 cursor-pointer flex h-24 w-24 items-center justify-center rounded-full border-[6px] border-slate-900 shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 ${connected
-                ? "bg-red-500 hover:bg-red-600"
-                : "bg-gradient-to-br from-green-400 to-emerald-600 hover:from-green-500 hover:to-emerald-700"
+              ? "bg-red-500 hover:bg-red-600"
+              : "bg-gradient-to-br from-green-400 to-emerald-600 hover:from-green-500 hover:to-emerald-700"
               }`}
           >
             {isLoading ? (
@@ -350,6 +362,13 @@ export default function Home() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="mt-4 rounded-2xl bg-white/5 px-6 py-3 text-sm text-slate-200 border border-white/10 text-center max-w-xl">
+          {!connected
+            ? `Selected language: ${selectedLanguage.flag} ${selectedLanguage.name}. Click the phone to start speaking in ${selectedLanguage.name}.`
+            : `You are now speaking in ${selectedLanguage.name}. Say something in ${selectedLanguage.name} and the AI will respond in the same language.`
+          }
         </div>
 
         {/* Error Message */}
