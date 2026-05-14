@@ -6,17 +6,19 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     const { language, agentId } = await request.json();
-    
-    // Use language-specific agent ID or fallback to default
-    const finalAgentId = agentId || process.env.ELEVENLABS_AGENT_ID;
-    const apiKey = process.env.ELEVENLABS_API_KEY;
 
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+    const defaultAgentId = agentId || process.env.ELEVENLABS_AGENT_ID;
+
+    const finalAgentId = defaultAgentId;
+
+    console.log(`Fetching signed URL for language: ${language} with agent: ${finalAgentId}`);
 
     // Validation Check
     if (!finalAgentId || !apiKey) {
-      console.error('Missing env variables:', { 
-        hasAgentId: !!finalAgentId, 
-        hasApiKey: !!apiKey 
+      console.error('Missing env variables:', {
+        hasAgentId: !!finalAgentId,
+        hasApiKey: !!apiKey
       });
       return NextResponse.json(
         { error: 'Missing ELEVENLABS_AGENT_ID or API_KEY in environment variables' },
@@ -24,9 +26,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Correct API Call to ElevenLabs with language-specific agent
+    // Always use the configured default agent for signed URL generation.
     const url = `https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${finalAgentId}`;
-    
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -38,7 +40,7 @@ export async function POST(request: Request) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('ElevenLabs API Error:', response.status, errorText);
-      
+
       return NextResponse.json(
         { error: `ElevenLabs Error (${response.status}): ${errorText}` },
         { status: response.status }
@@ -46,13 +48,14 @@ export async function POST(request: Request) {
     }
 
     const data = await response.json();
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       signedUrl: data.signed_url,
-      language: language 
+      language: language
     });
-    
+
   } catch (error) {
+    console.error('Server error:', error);
     return NextResponse.json(
       { error: 'Internal server error. Please try again.' },
       { status: 500 }
@@ -74,7 +77,7 @@ export async function GET() {
     }
 
     const url = `https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${agentId}`;
-    
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -92,11 +95,11 @@ export async function GET() {
     }
 
     const data = await response.json();
-    
-    return NextResponse.json({ 
-      signedUrl: data.signed_url 
+
+    return NextResponse.json({
+      signedUrl: data.signed_url
     });
-    
+
   } catch (error) {
     console.error('Server error:', error);
     return NextResponse.json(
@@ -105,5 +108,4 @@ export async function GET() {
     );
   }
 }
-
 
