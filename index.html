@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>ElevenLabs AI Studio - PDF + Links + Voice Conversation</title>
+  <!-- Tailwind CSS + Font Awesome + Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap"
+    rel="stylesheet">
+  <!-- PDF.js for PDF text extraction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <style>
+    * {
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      overflow-x: hidden;
+    }
+
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0px);
+      }
+
+      50% {
+        transform: translateY(-10px);
+      }
+    }
+
+    .animate-float {
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse-ring {
+      0% {
+        transform: scale(0.8);
+        opacity: 0.5;
+      }
+
+      100% {
+        transform: scale(1.4);
+        opacity: 0;
+      }
+    }
+
+    .pulse-ring::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .custom-scroll::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+    }
+
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+    }
+  </style>
+</head>
+
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen text-white">
+
+  <div class="container mx-auto px-4 py-6 max-w-7xl">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8 flex-wrap gap-4">
+      <div class="flex items-center gap-3">
+        <div
+          class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center shadow-lg">
+          <i class="fas fa-microphone-alt text-white text-xl"></i>
+        </div>
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-cyan-300 to-purple-300 bg-clip-text text-transparent">
+          ElevenLabs AI Studio</h1>
+      </div>
+      <div
+        class="flex items-center gap-3 text-sm bg-white/5 backdrop-blur-sm px-4 py-2 rounded-full border border-white/10">
+        <i class="fas fa-circle text-green-400 text-xs"></i>
+        <span>AI Ready • Voice Enabled</span>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-6">
+      <!-- LEFT COLUMN: Knowledge Base (PDF + Links) -->
+      <div class="space-y-5">
+        <!-- PDF Upload Card -->
+        <div class="bg-white/5 backdrop-blur-md rounded-2xl border border-white/15 p-5 shadow-xl">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="p-2 rounded-xl bg-cyan-500/20 text-cyan-300">
+              <i class="fas fa-file-pdf text-xl"></i>
+            </div>
+            <h2 class="text-xl font-semibold">Upload PDF Documents</h2>
+          </div>
+          <div id="pdfUploadArea"
+            class="border-2 border-dashed border-white/20 rounded-xl p-6 text-center cursor-pointer transition-all hover:border-cyan-400/50 hover:bg-white/5">
+            <input type="file" id="pdfInput" accept=".pdf" multiple class="hidden" />
+            <i class="fas fa-cloud-upload-alt text-4xl text-cyan-300 mb-2 block"></i>
+            <p class="text-sm text-gray-300">Click or drag & drop PDF files</p>
+            <p class="text-xs text-gray-400 mt-1">Supports multiple files • Text extraction for AI context</p>
+          </div>
+
+          <!-- PDF List -->
+          <div id="pdfList" class="mt-4 space-y-2 max-h-48 overflow-y-auto custom-scroll"></div>
+        </div>
+
+        <!-- Add Link Card -->
+        <div class="bg-white/5 backdrop-blur-md rounded-2xl border border-white/15 p-5 shadow-xl">
+          <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div class="flex items-center gap-3">
+              <div class="p-2 rounded-xl bg-purple-500/20 text-purple-300">
+                <i class="fas fa-link text-xl"></i>
+              </div>
+              <h2 class="text-xl font-semibold">Add Web Links / URLs</h2>
+            </div>
+            <button id="toggleLinkBtn"
+              class="text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-all">
+              <i class="fas fa-plus mr-1"></i> Add Link
+            </button>
+          </div>
+          <div id="linkInputContainer" class="hidden mb-4">
+            <div class="flex gap-2">
+              <input type="url" id="linkUrl" placeholder="https://example.com/article"
+                class="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-cyan-400" />
+              <button id="addLinkBtn"
+                class="bg-gradient-to-r from-cyan-500 to-blue-500 px-4 py-2 rounded-xl text-sm font-medium hover:opacity-90 transition-all">
+                <i class="fas fa-plus mr-1"></i> Add
+              </button>
+            </div>
+          </div>
+          <div id="linksList" class="space-y-2 max-h-48 overflow-y-auto custom-scroll"></div>
+        </div>
+
+        <!-- Knowledge Context Preview -->
+        <div class="bg-white/5 backdrop-blur-md rounded-2xl border border-white/15 p-5 shadow-xl">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <i class="fas fa-database text-emerald-300"></i>
+              <h3 class="font-semibold">📚 AI Knowledge Context</h3>
+            </div>
+            <button id="clearAllDocs" class="text-xs text-red-300 hover:text-red-200 transition-all">
+              <i class="fas fa-trash-alt mr-1"></i> Clear All
+            </button>
+          </div>
+          <div id="knowledgeStats" class="text-sm text-gray-300 mb-2">
+            <span id="docCount">0</span> documents loaded •
+            <span id="charCount">0</span> characters extracted
+          </div>
+          <div
+            class="bg-black/30 rounded-xl p-3 text-xs text-gray-300 max-h-32 overflow-y-auto custom-scroll font-mono">
+            <pre id="knowledgePreview"
+              class="whitespace-pre-wrap break-words">No documents added yet. Upload PDFs or add links to provide context for the AI.</pre>
+          </div>
+          <button id="syncToAI"
+            class="mt-3 w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 py-2 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2">
+            <i class="fas fa-sync-alt"></i> Sync Knowledge to ElevenLabs AI
+          </button>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: Voice AI Conversation -->
+      <div class="space-y-5">
+        <!-- Voice Orb & Call Control -->
+        <div
+          class="bg-white/5 backdrop-blur-md rounded-2xl border border-white/15 p-6 shadow-xl flex flex-col items-center">
+          <!-- Language Selector -->
+          <div class="w-full flex justify-end mb-2">
+            <div class="relative">
+              <button id="langSelectorBtn"
+                class="flex items-center gap-2 bg-white/10 rounded-full px-3 py-1.5 text-sm border border-white/20 hover:bg-white/20 transition-all">
+                <i class="fas fa-globe"></i>
+                <span id="selectedLangFlag">🇺🇸</span>
+                <span id="selectedLangName">English</span>
+                <i class="fas fa-chevron-down text-xs"></i>
+              </button>
+              <div id="langDropdown"
+                class="absolute right-0 mt-2 w-48 bg-slate-800/95 backdrop-blur-md rounded-xl border border-white/20 hidden z-20 shadow-2xl">
+                <div class="py-1 max-h-60 overflow-y-auto">
+                  <div data-lang="en" data-name="English" data-flag="🇺🇸"
+                    class="lang-option px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 text-sm">🇺🇸
+                    English</div>
+                  <div data-lang="hi" data-name="Hindi" data-flag="🇮🇳"
+                    class="lang-option px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 text-sm">🇮🇳
+                    Hindi</div>
+                  <div data-lang="es" data-name="Spanish" data-flag="🇪🇸"
+                    class="lang-option px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 text-sm">🇪🇸
+                    Spanish</div>
+                  <div data-lang="fr" data-name="French" data-flag="🇫🇷"
+                    class="lang-option px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 text-sm">🇫🇷
+                    French</div>
+                  <div data-lang="de" data-name="German" data-flag="🇩🇪"
+                    class="lang-option px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 text-sm">🇩🇪
+                    German</div>
+                  <div data-lang="ja" data-name="Japanese" data-flag="🇯🇵"
+                    class="lang-option px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 text-sm">🇯🇵
+                    Japanese</div>
+                  <div data-lang="ar" data-name="Arabic" data-flag="🇦🇪"
+                    class="lang-option px-4 py-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 text-sm">🇦🇪
+                    Arabic</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Orb Animation -->
+          <div class="relative my-4">
+            <div id="orbGlow" class="absolute inset-0 rounded-full bg-cyan-400/30 blur-2xl transition-all duration-200">
+            </div>
+            <div
+              class="relative w-56 h-56 rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 shadow-2xl flex items-center justify-center animate-float">
+              <div
+                class="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.4),transparent_70%)]">
+              </div>
+              <div id="orbPulse"
+                class="absolute w-16 h-16 rounded-full bg-white/30 blur-xl transition-all duration-150"></div>
+              <div class="text-4xl" id="orbFlag">🇺🇸</div>
+              <div class="absolute bottom-2 right-2 text-xs bg-black/40 px-1.5 rounded-full">AI</div>
+            </div>
+          </div>
+
+          <!-- Call Button -->
+          <button id="callButton"
+            class="mt-4 w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 hover:scale-105 transition-all shadow-xl flex items-center justify-center">
+            <i id="callIcon" class="fas fa-phone-alt text-white text-3xl"></i>
+          </button>
+
+          <!-- Status -->
+          <div id="statusText" class="mt-4 text-center text-white/80 text-sm bg-white/10 px-4 py-2 rounded-full">
+            Disconnected • Ready</div>
+          <div id="errorMessage" class="mt-2 text-red-300 text-xs text-center hidden"></div>
+        </div>
+
+        <!-- Conversation Transcript -->
+        <div class="bg-white/5 backdrop-blur-md rounded-2xl border border-white/15 p-5 shadow-xl">
+          <div class="flex items-center gap-2 mb-3">
+            <i class="fas fa-comment-dots text-cyan-300"></i>
+            <h3 class="font-semibold">💬 AI Conversation (Voice + Transcript)</h3>
+            <button id="clearChatBtn" class="ml-auto text-xs text-gray-400 hover:text-white">
+              <i class="fas fa-eraser"></i> Clear
+            </button>
+          </div>
+          <div id="chatMessages" class="h-64 overflow-y-auto space-y-3 pr-2 custom-scroll">
+            <div class="text-center text-gray-400 text-sm py-8">✨ Start a conversation! Click the phone button, then
+              speak about your uploaded documents.</div>
+          </div>
+          <div class="mt-3 text-xs text-gray-400 flex justify-between">
+            <span><i class="fas fa-microphone"></i> Click phone → Speak naturally</span>
+            <span><i class="fas fa-brain"></i> AI knows your PDFs & links</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ======================== STATE MANAGEMENT ========================
+    let documents = []; // { id, type, name, content, url? }
+    let knowledgeText = "";
+    let isConnected = false;
+    let currentLanguage = { code: "en", name: "English", flag: "🇺🇸" };
+
+    // Mock ElevenLabs Integration (simulated for demo - in real app connect to actual API)
+    // For full integration, replace with actual @elevenlabs/client SDK and signed URL endpoint
+    let conversationActive = false;
+    let mediaStream = null;
+
+    // DOM Elements
+    const pdfInput = document.getElementById('pdfInput');
+    const pdfUploadArea = document.getElementById('pdfUploadArea');
+    const pdfListDiv = document.getElementById('pdfList');
+    const linksListDiv = document.getElementById('linksList');
+    const linkInputContainer = document.getElementById('linkInputContainer');
+    const linkUrlInput = document.getElementById('linkUrl');
+    const addLinkBtn = document.getElementById('addLinkBtn');
+    const toggleLinkBtn = document.getElementById('toggleLinkBtn');
+    const clearAllDocs = document.getElementById('clearAllDocs');
+    const syncToAIBtn = document.getElementById('syncToAI');
+    const docCountSpan = document.getElementById('docCount');
+    const charCountSpan = document.getElementById('charCount');
+    const knowledgePreview = document.getElementById('knowledgePreview');
+    const callButton = document.getElementById('callButton');
+    const callIcon = document.getElementById('callIcon');
+    const statusText = document.getElementById('statusText');
+    const errorMessageDiv = document.getElementById('errorMessage');
+    const chatMessagesDiv = document.getElementById('chatMessages');
+    const clearChatBtn = document.getElementById('clearChatBtn');
+    const orbGlow = document.getElementById('orbGlow');
+    const orbPulse = document.getElementById('orbPulse');
+    const orbFlag = document.getElementById('orbFlag');
+
+    // Language dropdown
+    const langSelectorBtn = document.getElementById('langSelectorBtn');
+    const langDropdown = document.getElementById('langDropdown');
+    const selectedLangFlag = document.getElementById('selectedLangFlag');
+    const selectedLangName = document.getElementById('selectedLangName');
+
+    // Helper: update knowledge preview
+    function updateKnowledgeBase() {
+      const totalChars = knowledgeText.length;
+      docCountSpan.innerText = documents.length;
+      charCountSpan.innerText = totalChars.toLocaleString();
+      const preview = knowledgeText.substring(0, 500) + (knowledgeText.length > 500 ? "..." : "");
+      knowledgePreview.innerText = preview || "No documents added yet. Upload PDFs or add links to provide context for the AI.";
+    }
+
+    // Extract text from PDF using pdf.js
+    async function extractPdfText(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
+      let fullText = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str).join(" ");
+        fullText += pageText + "\n";
+      }
+      return fullText;
+    }
+
+    // Add PDF file
+    async function addPDF(file) {
+      try {
+        statusText.innerText = `Extracting text from ${file.name}...`;
+        const extracted = await extractPdfText(file);
+        const newDoc = {
+          id: Date.now() + Math.random() + file.name,
+          type: "pdf",
+          name: file.name,
+          content: extracted,
+          uploadedAt: new Date()
+        };
+        documents.push(newDoc);
+        knowledgeText = documents.map(d => `[${d.type.toUpperCase()}] ${d.name}:\n${d.content || d.url || ""}`).join("\n\n---\n\n");
+        updateKnowledgeBase();
+        renderPDFList();
+        statusText.innerText = `✅ ${file.name} added! Click "Sync" to push to AI.`;
+        setTimeout(() => { if (!isConnected) statusText.innerText = "Disconnected • Ready"; }, 2000);
+      } catch (err) {
+        console.error(err);
+        errorMessageDiv.innerText = `Failed to extract PDF: ${err.message}`;
+        errorMessageDiv.classList.remove('hidden');
+        setTimeout(() => errorMessageDiv.classList.add('hidden'), 3000);
+      }
+    }
+
+    // Add Link (simulate fetching content - in real app you'd fetch actual text)
+    async function addLink(url) {
+      if (!url.startsWith('http')) url = 'https://' + url;
+      const newDoc = {
+        id: Date.now() + Math.random(),
+        type: "link",
+        name: url,
+        url: url,
+        content: `[Content from ${url}] This is simulated webpage content. In production, use backend to scrape or fetch text from URL. The AI will use this reference.`,
+        uploadedAt: new Date()
+      };
+      documents.push(newDoc);
+      knowledgeText = documents.map(d => `[${d.type.toUpperCase()}] ${d.name}:\n${d.content || ""}`).join("\n\n---\n\n");
+      updateKnowledgeBase();
+      renderLinksList();
+      linkUrlInput.value = "";
+      linkInputContainer.classList.add('hidden');
+      statusText.innerText = `✅ Link added! Sync to AI.`;
+      setTimeout(() => { if (!isConnected) statusText.innerText = "Disconnected • Ready"; }, 1500);
+    }
+
+    function renderPDFList() {
+      const pdfDocs = documents.filter(d => d.type === 'pdf');
+      if (pdfDocs.length === 0) {
+        pdfListDiv.innerHTML = '<div class="text-center text-gray-400 text-sm py-2">No PDFs uploaded</div>';
+        return;
+      }
+      pdfListDiv.innerHTML = pdfDocs.map(doc => `
+        <div class="flex justify-between items-center bg-white/5 rounded-lg p-2 text-sm">
+          <div class="flex items-center gap-2 truncate">
+            <i class="fas fa-file-pdf text-red-300"></i>
+            <span class="truncate">${doc.name.substring(0, 30)}</span>
+          </div>
+          <button onclick="removeDocument('${doc.id}')" class="text-red-300 hover:text-red-200 text-xs"><i class="fas fa-trash"></i></button>
+        </div>
+      `).join('');
+    }
+
+    function renderLinksList() {
+      const linkDocs = documents.filter(d => d.type === 'link');
+      if (linkDocs.length === 0) {
+        linksListDiv.innerHTML = '<div class="text-center text-gray-400 text-sm py-2">No links added</div>';
+        return;
+      }
+      linksListDiv.innerHTML = linkDocs.map(doc => `
+        <div class="flex justify-between items-center bg-white/5 rounded-lg p-2 text-sm">
+          <div class="flex items-center gap-2 truncate">
+            <i class="fas fa-link text-purple-300"></i>
+            <span class="truncate">${doc.name.length > 40 ? doc.name.substring(0, 40) + '...' : doc.name}</span>
+          </div>
+          <button onclick="removeDocument('${doc.id}')" class="text-red-300 hover:text-red-200 text-xs"><i class="fas fa-trash"></i></button>
+        </div>
+      `).join('');
+    }
+
+    window.removeDocument = function (id) {
+      documents = documents.filter(d => d.id !== id);
+      knowledgeText = documents.map(d => `[${d.type.toUpperCase()}] ${d.name}:\n${d.content || ""}`).join("\n\n---\n\n");
+      updateKnowledgeBase();
+      renderPDFList();
+      renderLinksList();
+      statusText.innerText = `Document removed. Re-sync to update AI.`;
+    };
+
+    // Sync to ElevenLabs AI (simulate sending context to conversation)
+    function syncToAI() {
+      if (isConnected) {
+        // If conversation active, we can send contextual update
+        if (window.activeConversation && window.activeConversation.sendContextualUpdate) {
+          const contextMsg = `The user has provided the following knowledge base from PDFs and links. Use this information to answer questions:\n\n${knowledgeText.substring(0, 8000)}`;
+          window.activeConversation.sendContextualUpdate(contextMsg);
+          addChatMessage("system", "🧠 Knowledge base synced! AI now knows your documents.");
+        } else {
+          addChatMessage("system", "📚 Knowledge base prepared. Start or restart conversation for AI to fully ingest documents.");
+        }
+      } else {
+        addChatMessage("system", `✅ Knowledge ready: ${documents.length} docs (${knowledgeText.length} chars). Click phone to speak with AI about them.`);
+      }
+      statusText.innerText = "Knowledge synced!";
+      setTimeout(() => { if (!isConnected) statusText.innerText = "Disconnected • Ready"; }, 1500);
+    }
+
+    function addChatMessage(role, content, isUser = false) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+      const bubbleClass = role === 'user' ? 'bg-cyan-500/20 text-cyan-100 border border-cyan-400/30' : 'bg-purple-500/20 text-white border border-purple-400/30';
+      msgDiv.innerHTML = `
+        <div class="max-w-[80%] ${bubbleClass} rounded-2xl px-3 py-2 text-sm">
+          <div class="flex items-center gap-1 mb-0.5">
+            <i class="fas ${role === 'user' ? 'fa-user' : (role === 'system' ? 'fa-robot' : 'fa-microphone-alt')} text-xs opacity-70"></i>
+            <span class="text-xs font-semibold">${role === 'user' ? 'You' : (role === 'system' ? 'System' : 'AI')}</span>
+          </div>
+          <div>${content}</div>
+        </div>
+      `;
+      chatMessagesDiv.appendChild(msgDiv);
+      chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+      if (chatMessagesDiv.querySelector('.text-center')) chatMessagesDiv.innerHTML = '';
+    }
+
+    // Simulated voice conversation using Web Speech API + ElevenLabs context
+    // For actual full ElevenLabs integration, you would plug in the SDK.
+    // This demo provides a functional voice chat with knowledge context.
+    let recognition = null;
+    let synthesis = window.speechSynthesis;
+
+    function startVoiceConversation() {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        errorMessageDiv.innerText = "Your browser doesn't support speech recognition. Use Chrome/Edge.";
+        errorMessageDiv.classList.remove('hidden');
+        return false;
+      }
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = currentLanguage.code === 'en' ? 'en-US' :
+        currentLanguage.code === 'hi' ? 'hi-IN' :
+          currentLanguage.code === 'es' ? 'es-ES' : 'en-US';
+
+      recognition.onstart = () => {
+        statusText.innerText = `🎤 Listening (${currentLanguage.name})... Speak now`;
+        orbGlow.style.transform = `scale(1.2)`;
+      };
+      recognition.onresult = async (event) => {
+        const userText = event.results[0][0].transcript;
+        addChatMessage("user", userText, true);
+        statusText.innerText = `🤔 AI thinking about ${currentLanguage.name}...`;
+
+        // Simulate AI response using knowledge context + language
+        let aiReply = generateAIReply(userText, knowledgeText, currentLanguage.name);
+        // Use speech synthesis
+        const utterance = new SpeechSynthesisUtterance(aiReply);
+        utterance.lang = currentLanguage.code === 'en' ? 'en-US' :
+          currentLanguage.code === 'es' ? 'es-ES' :
+            currentLanguage.code === 'hi' ? 'hi-IN' : 'en-US';
+        utterance.rate = 0.9;
+        utterance.onstart = () => { statusText.innerText = `🗣️ AI speaking in ${currentLanguage.name}...`; };
+        utterance.onend = () => {
+          statusText.innerText = `🎤 Listening again...`;
+          if (isConnected) recognition.start();
+        };
+        synthesis.speak(utterance);
+        addChatMessage("ai", aiReply);
+      };
+      recognition.onerror = (err) => {
+        console.error(err);
+        statusText.innerText = `Error: ${err.error}. Tap phone again.`;
+        if (isConnected) setTimeout(() => recognition?.start(), 2000);
+      };
+      recognition.start();
+      return true;
+    }
+
+    function generateAIReply(userMessage, context, langName) {
+      if (!context || context.length < 20) {
+        return `[${langName}] I don't have any documents yet. Please upload PDFs or add links first, then ask me about them!`;
+      }
+      const lowerMsg = userMessage.toLowerCase();
+      if (lowerMsg.includes("hello") || lowerMsg.includes("hi")) {
+        return `[${langName}] Hello! I've studied your ${documents.length} documents. What would you like to know about them?`;
+      }
+      if (lowerMsg.includes("summary") || lowerMsg.includes("summarize")) {
+        const snippet = context.substring(0, 500);
+        return `[${langName}] Based on your documents: ${snippet}... Would you like details on a specific topic?`;
+      }
+      return `[${langName}] According to your uploaded knowledge: ${context.substring(0, 300)}... Regarding "${userMessage}", I can help. Could you be more specific?`;
+    }
+
+    function stopVoiceConversation() {
+      if (recognition) {
+        recognition.stop();
+        recognition = null;
+      }
+      synthesis.cancel();
+      isConnected = false;
+      conversationActive = false;
+      callIcon.className = "fas fa-phone-alt text-white text-3xl";
+      callButton.className = "mt-4 w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 hover:scale-105 transition-all shadow-xl flex items-center justify-center";
+      statusText.innerText = "Disconnected • Ready";
+      orbGlow.style.transform = "scale(1)";
+    }
+
+    // Toggle call
+    async function toggleCall() {
+      if (isConnected) {
+        stopVoiceConversation();
+        return;
+      }
+      if (documents.length === 0) {
+        errorMessageDiv.innerText = "⚠️ Please upload at least one PDF or link before starting conversation.";
+        errorMessageDiv.classList.remove('hidden');
+        setTimeout(() => errorMessageDiv.classList.add('hidden'), 3000);
+        return;
+      }
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        isConnected = true;
+        conversationActive = true;
+        callIcon.className = "fas fa-phone-slash text-white text-3xl";
+        callButton.className = "mt-4 w-20 h-20 rounded-full bg-gradient-to-br from-red-500 to-rose-600 hover:scale-105 transition-all shadow-xl flex items-center justify-center";
+        statusText.innerText = `Connected • Listening in ${currentLanguage.name}...`;
+        syncToAI(); // push knowledge context
+        setTimeout(() => {
+          if (isConnected) startVoiceConversation();
+        }, 500);
+      } catch (err) {
+        errorMessageDiv.innerText = "Microphone access denied or error.";
+        errorMessageDiv.classList.remove('hidden');
+        setTimeout(() => errorMessageDiv.classList.add('hidden'), 3000);
+      }
+    }
+
+    // Language handling
+    function setLanguage(langCode, langName, flag) {
+      if (isConnected) {
+        errorMessageDiv.innerText = "End current call before changing language.";
+        errorMessageDiv.classList.remove('hidden');
+        setTimeout(() => errorMessageDiv.classList.add('hidden'), 2000);
+        return;
+      }
+      currentLanguage = { code: langCode, name: langName, flag: flag };
+      selectedLangFlag.innerText = flag;
+      selectedLangName.innerText = langName;
+      orbFlag.innerText = flag;
+      langDropdown.classList.add('hidden');
+      statusText.innerText = `Language: ${langName} • Ready`;
+    }
+
+    // Event listeners
+    pdfUploadArea.addEventListener('click', () => pdfInput.click());
+    pdfUploadArea.addEventListener('dragover', (e) => e.preventDefault());
+    pdfUploadArea.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+      for (const file of files) await addPDF(file);
+    });
+    pdfInput.addEventListener('change', async (e) => {
+      for (const file of e.target.files) await addPDF(file);
+      pdfInput.value = '';
+    });
+    toggleLinkBtn.addEventListener('click', () => linkInputContainer.classList.toggle('hidden'));
+    addLinkBtn.addEventListener('click', () => { if (linkUrlInput.value.trim()) addLink(linkUrlInput.value.trim()); });
+    clearAllDocs.addEventListener('click', () => { documents = []; knowledgeText = ""; updateKnowledgeBase(); renderPDFList(); renderLinksList(); statusText.innerText = "All documents cleared."; });
+    syncToAIBtn.addEventListener('click', syncToAI);
+    callButton.addEventListener('click', toggleCall);
+    clearChatBtn.addEventListener('click', () => { chatMessagesDiv.innerHTML = '<div class="text-center text-gray-400 text-sm py-8">✨ Conversation cleared. Start talking!</div>'; });
+    langSelectorBtn.addEventListener('click', (e) => { e.stopPropagation(); langDropdown.classList.toggle('hidden'); });
+    document.querySelectorAll('.lang-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const lang = opt.getAttribute('data-lang');
+        const name = opt.getAttribute('data-name');
+        const flag = opt.getAttribute('data-flag');
+        setLanguage(lang, name, flag);
+      });
+    });
+    document.addEventListener('click', () => langDropdown.classList.add('hidden'));
+
+    updateKnowledgeBase();
+    renderPDFList();
+    renderLinksList();
+  </script>
+</body>
+
+</html>

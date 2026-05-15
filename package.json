@@ -10,16 +10,24 @@
   },
   "dependencies": {
     "@elevenlabs/client": "^1.7.0",
+    "@reduxjs/toolkit": "^2.11.2",
+    "formik": "^2.4.9",
     "lucide-react": "^1.14.0",
     "next": "16.2.6",
     "papaparse": "^5.5.3",
+    "pdfjs-dist": "^5.7.284",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "xlsx": "^0.18.5"
+    "react-hot-toast": "^2.6.0",
+    "react-icons": "^5.6.0",
+    "react-redux": "^9.2.0",
+    "xlsx": "^0.18.5",
+    "yup": "^1.7.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/papaparse": "^5.5.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
